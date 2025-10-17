@@ -1,67 +1,71 @@
 from datetime import datetime
-import os
-from venv import create
-
 
 class Entity:
     _id_counter = 0
-    def __init__(self, created_at = datetime.now(), updated_at = datetime.now()):
+    def __init__(self, created_at = None, updated_at = None):
         Entity._id_counter += 1
         self._id = Entity._id_counter
-        self._created_at = created_at
-        self._updated_at = updated_at
+        self._created_at = created_at or datetime.now()
+        self._updated_at = updated_at or datetime.now()
 
-    def get_id(self):
+    @property
+    def id(self):
         return self._id
 
 class Task(Entity):
-    test = 1
     def __init__(self, title, description = "", status = "In progress", deadline = "", assignee = None, created_at = datetime.now(), updated_at = datetime.now()):
         super().__init__(created_at, updated_at)
-        self._id = super().get_id()
         self._title = title
         self._description = description
         self._status = status
         self._deadline = deadline
-        if assignee is None:
-            assignee = []
         self._assignee = assignee # User
 
-    def get_title(self):
+    def get_details_string(self):
+        return f'{self._id}: ({self._status}) | {self._assignee.name} | {self._title}: {self._description}'
+
+    @property
+    def title(self):
         return self._title
 
-    def get_description(self):
+    @title.setter
+    def title(self, value):
+        self._title = value
+
+    @property
+    def description(self):
         return self._description
 
-    def get_status(self):
+    @property
+    def status(self):
         return self._status
 
-    def set_status(self, status):
-        self._status = status
+    @status.setter
+    def status(self, value):
+        self._status = value
 
-    def get_assignee(self):
+    @property
+    def assignee(self):
         return self._assignee
 
-    def set_assignee(self, assignee):
-        self._assignee = assignee
-
-    def get_details_string(self):
-        return f'{self._id}: ({self._status}) | {self._assignee.get_name()} | {self._title}: {self._description}'
+    @assignee.setter
+    def assignee(self, value):
+        self._assignee = value
 
 
 class User(Entity):
     def __init__(self, name, email, created_at = datetime.now(), updated_at = datetime.now()):
         super().__init__(created_at, updated_at)
-        self._id = super().get_id()
         self._name = name
         self._email = email
 
-    def get_name(self):
+    @property
+    def name(self):
         return self._name
 
-    def get_email(self):
+    @property
+    def email(self):
         return self._email
-
 
 class Project(Entity):
     def __init__(self, name, created_at = datetime.now(), updated_at = datetime.now(), tasks=None, members=None):
@@ -70,15 +74,16 @@ class Project(Entity):
             tasks = []
         if members is None:
             members = []
-        self._id = super().get_id()
         self._name = name
         self._tasks = tasks #List[Task]
         self._members = members #List[User]
 
-    def get_name(self):
+    @property
+    def name(self):
         return self._name
 
-    def get_tasks(self):
+    @property
+    def tasks(self):
         return self._tasks
 
     def append_task(self, task):
@@ -90,9 +95,18 @@ class Project(Entity):
             print(task.get_details_string())
         print("\n")
 
+class TaskFlowApp:
+    def __init__(self):
+        self.projects = []
+        self.users = []
 
-projects_list = []
-users_list = []
+    def create_project(self, project_name):
+        self.projects.append(Project(project_name))
+
+    def print_list_of_projects(self):
+        for project in self.projects:
+            print(f'{project.id}. {project.name}')
+
 
 def print_menu():
     print(
@@ -108,23 +122,19 @@ def print_menu():
 def create_project_menu():
     print("CREATE PROJECT")
     project_name = input("Project name:")
-    global projects_list
-    projects_list.append(Project(project_name))
+    app.create_project(project_name)
     print("Project created!")
     print("Current projects list:")
-    for project in projects_list:
-        print(project.get_name(), " ")
+    app.print_list_of_projects()
     enter_main_menu()
 
 def add_tasks_menu():
-    global projects_list
-    if len(projects_list) == 0:
+    if len(app.projects) == 0:
         print("No projects. Create a project first.")
         enter_main_menu()
         return
     else:
-        for project in projects_list:
-            print(project.get_id(), ":", project.get_name())
+        app.print_list_of_projects()
 
     while True:
         current_project_id = input("Enter current project id:")
@@ -135,11 +145,12 @@ def add_tasks_menu():
             break
     current_project_id = int(current_project_id)
     found_project = False
-    for project in projects_list:
-        if project.get_id() == current_project_id:
+    for project in app.projects:
+        if project.id == current_project_id:
             found_project = True
             create_task(project)
             enter_main_menu()
+            break
 
     if found_project is False:
         print("Project not found.")
@@ -158,8 +169,8 @@ def get_assignee_for_task():
 
         assignee_id = int(assignee_id)
         task_assignee = None
-        for user in users_list:
-            if user.get_id() == assignee_id:
+        for user in app.users:
+            if user.id == assignee_id:
                 task_assignee = user
 
         return task_assignee
@@ -176,20 +187,20 @@ def create_task(project):
     project.print_project_tasks()
 
 def print_list_of_current_users():
-    for user in users_list:
-        print(f'{user.get_id()}:{user.get_name()}, {user.get_email()}')
+    for user in app.users:
+        print(f'{user.id}:{user.name}, {user.email}')
 
 def create_users_menu():
     user_name = input("Enter user name: ")
     user_email = input("Enter user email: ")
-    users_list.append(User(user_name,user_email))
+    app.users.append(User(user_name,user_email))
     print("\nCurrent users:")
     print_list_of_current_users()
     enter_main_menu()
 
 def list_all_tasks():
     print("List of current tasks in all projects:")
-    for project in projects_list:
+    for project in app.projects:
         project.print_project_tasks()
 
 def list_all_tasks_menu():
@@ -197,12 +208,12 @@ def list_all_tasks_menu():
     enter_main_menu()
 
 def assign_tasks_to_users():
-    if len(projects_list) == 0:
+    if len(app.projects) == 0:
         print("No active projects. Create a project first.")
         enter_main_menu()
         return
 
-    if len(users_list) == 0:
+    if len(app.users) == 0:
         print("No users registered. Add a user first.")
         enter_main_menu()
         return
@@ -217,18 +228,18 @@ def assign_tasks_to_users():
             assign_tasks_to_users()
             break
 
-        for project in projects_list:
-            all_tasks_list += project.get_tasks()
+        for project in app.projects:
+            all_tasks_list += project.tasks
 
         for task in all_tasks_list:
-            if int(task.get_id()) == int(current_task_id):
+            if int(task.id) == int(current_task_id):
                 selected_task = task
                 break
 
         if selected_task is None:
             print("Task not found.")
         else:
-            print(f'Select a user for the {selected_task.get_id()}: {selected_task.get_title()} task.')
+            print(f'Select a user for the {selected_task.id}: {selected_task.title} task.')
             break
 
     print_list_of_current_users()
@@ -239,8 +250,8 @@ def assign_tasks_to_users():
         if not current_user_id.isdigit():
             print("User id is not a number")
             continue
-        for user in users_list:
-            if user.get_id() == int(current_user_id):
+        for user in app.users:
+            if user.id == int(current_user_id):
                 found_user = True
                 selected_user = user
                 break
@@ -256,12 +267,12 @@ def assign_tasks_to_users():
         enter_main_menu()
         return
 
-    selected_task.set_assignee(selected_user)
+    selected_task.assignee = selected_user
     print("Updated task:\n", selected_task.get_details_string())
     enter_main_menu()
 
 def filter_task_by_user_or_status_menu():
-    if len(projects_list) == 0:
+    if len(app.projects) == 0:
         print("No active projects. Create a project first.")
         enter_main_menu()
         return
@@ -279,7 +290,7 @@ def filter_task_by_user_or_status_menu():
 
 
     if int(option) == 1:
-        if len(users_list) == 0:
+        if len(app.users) == 0:
             print("No users registered. Add a user first.")
             enter_main_menu()
             return
@@ -291,8 +302,8 @@ def filter_task_by_user_or_status_menu():
             if not current_user_id.isdigit():
                 print("User id is not a number")
                 continue
-            for user in users_list:
-                if user.get_id() == int(current_user_id):
+            for user in app.users:
+                if user.id == int(current_user_id):
                     found_user = True
                     selected_user = user
                     break
@@ -309,14 +320,14 @@ def filter_task_by_user_or_status_menu():
             return
 
 
-        for project in projects_list:
-            project_tasks = project.get_tasks()
+        for project in app.projects:
+            project_tasks = project.tasks
             for task in project_tasks:
-                if task.get_assignee() == selected_user:
+                if task.assignee == selected_user:
                     print(task.get_details_string())
         enter_main_menu()
     elif int(option) == 2:
-        if len(users_list) == 0:
+        if len(app.users) == 0:
             print("No users registered. Add a user first.")
             enter_main_menu()
             return
@@ -347,16 +358,16 @@ def filter_task_by_user_or_status_menu():
 
 
 def show_tasks_by_status(status):
-    for project in projects_list:
-        project_tasks = project.get_tasks()
+    for project in app.projects:
+        project_tasks = project.tasks
         for task in project_tasks:
-            if task.get_status() == status:
+            if task.status == status:
                 print(task.get_details_string())
 
 def mark_tasks_complete_menu():
     tasks_list = []
-    for project in projects_list:
-        tasks_list += project.get_tasks()
+    for project in app.projects:
+        tasks_list += project.tasks
 
     if len(tasks_list) == 0:
         print("No active tasks. Add a task first.")
@@ -373,12 +384,12 @@ def mark_tasks_complete_menu():
             print("Task id is not a number")
             continue
         for task in tasks_list:
-            if task.get_id() == int(selected_task_id):
+            if task.id == int(selected_task_id):
                 selected_task = task
                 break
 
         if selected_task is not None:
-            selected_task.set_status("Done")
+            selected_task.status = "Done"
             print(f'Updated task:\n'
                   f'{selected_task.get_details_string()}')
             enter_main_menu()
@@ -417,4 +428,5 @@ def enter_main_menu():
             handle_main_menu_option(int(option))
             break
 
+app = TaskFlowApp()
 enter_main_menu()
